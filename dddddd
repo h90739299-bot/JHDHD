@@ -7,94 +7,86 @@ local RootPart = Character:WaitForChild("HumanoidRootPart")
 local Flying = false
 local AirWalkEnabled = false
 local FlySpeed = 25
-local ToggleKey = Enum.KeyCode.F
-local BoostKey = Enum.KeyCode.R
-local AirWalkKey = Enum.KeyCode.G
 
--- Create GUI with phone-friendly layout
+-- Create main GUI
 local ScreenGui = Instance.new("ScreenGui")
-ScreenGui.Name = "ControlGui"
+ScreenGui.Name = "MobileFlyGui"
 ScreenGui.Parent = game.CoreGui
 
--- Main container with phone-like layout
+-- Main control buttons frame
 local MainFrame = Instance.new("Frame")
-MainFrame.Size = UDim2.new(0, 300, 0, 220)  -- Larger for touch screens
-MainFrame.Position = UDim2.new(0.5, -150, 0, 10)  -- Centered horizontally
+MainFrame.Size = UDim2.new(0, 150, 0, 150)
+MainFrame.Position = UDim2.new(0, 10, 0.5, -75)
 MainFrame.BackgroundColor3 = Color3.fromRGB(40, 40, 40)
+MainFrame.BackgroundTransparency = 0.3
 MainFrame.BorderSizePixel = 0
 MainFrame.Active = true
 MainFrame.Draggable = true
 MainFrame.Parent = ScreenGui
 
--- Title bar
-local TitleBar = Instance.new("Frame")
-TitleBar.Size = UDim2.new(1, 0, 0, 40)
-TitleBar.BackgroundColor3 = Color3.fromRGB(30, 30, 30)
-TitleBar.BorderSizePixel = 0
-TitleBar.Parent = MainFrame
-
 local Title = Instance.new("TextLabel")
-Title.Size = UDim2.new(1, 0, 1, 0)
-Title.BackgroundTransparency = 1
+Title.Size = UDim2.new(1, 0, 0, 30)
+Title.BackgroundColor3 = Color3.fromRGB(30, 30, 30)
 Title.TextColor3 = Color3.fromRGB(255, 255, 255)
 Title.Text = "Fly Controls"
 Title.Font = Enum.Font.GothamBold
-Title.TextSize = 20
-Title.Parent = TitleBar
+Title.Parent = MainFrame
 
--- Content area
-local ContentFrame = Instance.new("Frame")
-ContentFrame.Size = UDim2.new(1, 0, 1, -40)
-ContentFrame.Position = UDim2.new(0, 0, 0, 40)
-ContentFrame.BackgroundTransparency = 1
-ContentFrame.Parent = MainFrame
-
--- Big buttons for touch screens
 local FlyButton = Instance.new("TextButton")
-FlyButton.Size = UDim2.new(0.9, 0, 0, 50)
-FlyButton.Position = UDim2.new(0.05, 0, 0, 10)
+FlyButton.Size = UDim2.new(0.9, 0, 0, 30)
+FlyButton.Position = UDim2.new(0.05, 0, 0, 35)
 FlyButton.BackgroundColor3 = Color3.fromRGB(60, 60, 60)
 FlyButton.TextColor3 = Color3.fromRGB(255, 255, 255)
 FlyButton.Text = "Fly: OFF"
 FlyButton.Font = Enum.Font.Gotham
-FlyButton.TextSize = 18
-FlyButton.Parent = ContentFrame
+FlyButton.Parent = MainFrame
 
 local BoostButton = Instance.new("TextButton")
-BoostButton.Size = UDim2.new(0.9, 0, 0, 50)
+BoostButton.Size = UDim2.new(0.9, 0, 0, 30)
 BoostButton.Position = UDim2.new(0.05, 0, 0, 70)
 BoostButton.BackgroundColor3 = Color3.fromRGB(60, 60, 60)
 BoostButton.TextColor3 = Color3.fromRGB(255, 255, 255)
 BoostButton.Text = "BOOST UP"
 BoostButton.Font = Enum.Font.Gotham
-BoostButton.TextSize = 18
-BoostButton.Parent = ContentFrame
+BoostButton.Parent = MainFrame
 
 local AirWalkButton = Instance.new("TextButton")
-AirWalkButton.Size = UDim2.new(0.9, 0, 0, 50)
-AirWalkButton.Position = UDim2.new(0.05, 0, 0, 130)
+AirWalkButton.Size = UDim2.new(0.9, 0, 0, 30)
+AirWalkButton.Position = UDim2.new(0.05, 0, 0, 105)
 AirWalkButton.BackgroundColor3 = Color3.fromRGB(60, 60, 60)
 AirWalkButton.TextColor3 = Color3.fromRGB(255, 255, 255)
 AirWalkButton.Text = "Air Walk: OFF"
 AirWalkButton.Font = Enum.Font.Gotham
-AirWalkButton.TextSize = 18
-AirWalkButton.Parent = ContentFrame
+AirWalkButton.Parent = MainFrame
 
--- Visual feedback for touch
-local TouchFeedback = Instance.new("Frame")
-TouchFeedback.Size = UDim2.new(0, 100, 0, 100)
-TouchFeedback.Position = UDim2.new(0.5, -50, 0.5, -50)
-TouchFeedback.BackgroundColor3 = Color3.fromRGB(0, 150, 255)
-TouchBackground.Transparency = 0.8
-TouchFeedback.Visible = false
-TouchFeedback.Parent = ScreenGui
+-- Flight control buttons (visible only when flying)
+local FlightControls = Instance.new("Frame")
+FlightControls.Size = UDim2.new(0, 200, 0, 200)
+FlightControls.Position = UDim2.new(1, -210, 0.5, -100)
+FlightControls.BackgroundTransparency = 1
+FlightControls.Visible = false
+FlightControls.Parent = ScreenGui
 
--- Function to show touch feedback
-local function ShowTouchFeedback(position)
-    TouchFeedback.Position = UDim2.new(0, position.X - 50, 0, position.Y - 50)
-    TouchFeedback.Visible = true
-    wait(0.1)
-    TouchFeedback.Visible = false
+-- Flight control buttons
+local UpButton = createFlightButton("↑", UDim2.new(0.5, -25, 0, 10))
+local DownButton = createFlightButton("↓", UDim2.new(0.5, -25, 0, 110))
+local LeftButton = createFlightButton("←", UDim2.new(0, 10, 0.5, -25))
+local RightButton = createFlightButton("→", UDim2.new(1, -60, 0.5, -25))
+local ForwardButton = createFlightButton("F", UDim2.new(0.5, -25, 0.5, -25))
+
+-- Helper function to create flight buttons
+function createFlightButton(text, position)
+	local button = Instance.new("TextButton")
+	button.Size = UDim2.new(0, 50, 0, 50)
+	button.Position = position
+	button.BackgroundColor3 = Color3.fromRGB(60, 60, 60)
+	button.BackgroundTransparency = 0.5
+	button.TextColor3 = Color3.fromRGB(255, 255, 255)
+	button.Text = text
+	button.Font = Enum.Font.GothamBold
+	button.TextScaled = true
+	button.Parent = FlightControls
+	return button
 end
 
 -- Air Walk variables
@@ -115,6 +107,7 @@ local function CreateAirBlock(position)
     block.Name = "AirBlock_" .. math.random(10000, 99999)
     block.Parent = workspace
     
+    -- Automatically disappear after 1 second
     delay(1, function()
         if block and block.Parent then
             block:Destroy()
@@ -141,30 +134,36 @@ local function StartAirWalk()
     AirWalkButton.BackgroundColor3 = Color3.fromRGB(0, 120, 0)
     
     if Flying then
-        ToggleFly()
+        ToggleFly() -- Выключаем полет если он включен
     end
     
+    -- Create first block under player
     CreateAirBlock(RootPart.Position - Vector3.new(0, 4, 0))
     
+    -- Air Walk control loop
     airWalkConnection = game:GetService("RunService").Heartbeat:Connect(function()
         if not AirWalkEnabled or not RootPart then
             return
         end
         
+        -- Check if player is moving
         local currentPosition = RootPart.Position
         local distanceMoved = (currentPosition - lastPosition).Magnitude
         
         if distanceMoved > 2 then
+            -- Create new air block where player is moving
             local moveDirection = (currentPosition - lastPosition).Unit
             local newBlockPos = currentPosition + moveDirection * 3 - Vector3.new(0, 4, 0)
             CreateAirBlock(newBlockPos)
             lastPosition = currentPosition
         end
         
+        -- Clean up old blocks
         if #airBlocks > 20 then
             CleanAirBlocks()
         end
         
+        -- Keep player from falling too fast
         if RootPart.Velocity.Y < -10 then
             RootPart.Velocity = Vector3.new(RootPart.Velocity.X, -10, RootPart.Velocity.Z)
         end
@@ -182,6 +181,7 @@ local function StopAirWalk()
         airWalkConnection = nil
     end
     
+    -- Remove all air blocks
     for _, block in ipairs(airBlocks) do
         if block and block.Parent then
             block:Destroy()
@@ -202,6 +202,7 @@ end
 -- Flight control variables
 local BV, BG
 local flightLoop
+local moveDirection = Vector3.new()
 
 -- Function to boost player upward
 local function BoostUp()
@@ -244,6 +245,10 @@ local function StartFlying()
     BG.Parent = RootPart
     
     Humanoid.PlatformStand = true
+    FlightControls.Visible = true
+    
+    -- Reset movement direction
+    moveDirection = Vector3.new()
     
     flightLoop = game:GetService("RunService").Heartbeat:Connect(function()
         if not Flying or not RootPart or not BV or not BG then
@@ -256,32 +261,12 @@ local function StartFlying()
         local Camera = workspace.CurrentCamera
         BG.CFrame = Camera.CFrame
         
-        local Direction = Vector3.new()
-        
-        if game:GetService("UserInputService"):IsKeyDown(Enum.KeyCode.W) then
-            Direction = Direction + Camera.CFrame.LookVector
+        -- Apply movement direction with speed
+        if moveDirection.Magnitude > 0 then
+            BV.Velocity = moveDirection.Unit * FlySpeed
+        else
+            BV.Velocity = Vector3.new(0, 0, 0)
         end
-        if game:GetService("UserInputService"):IsKeyDown(Enum.KeyCode.S) then
-            Direction = Direction - Camera.CFrame.LookVector
-        end
-        if game:GetService("UserInputService"):IsKeyDown(Enum.KeyCode.A) then
-            Direction = Direction - Camera.CFrame.RightVector
-        end
-        if game:GetService("UserInputService"):IsKeyDown(Enum.KeyCode.D) then
-            Direction = Direction + Camera.CFrame.RightVector
-        end
-        if game:GetService("UserInputService"):IsKeyDown(Enum.KeyCode.Space) then
-            Direction = Direction + Vector3.new(0, 1, 0)
-        end
-        if game:GetService("UserInputService"):IsKeyDown(Enum.KeyCode.LeftShift) then
-            Direction = Direction - Vector3.new(0, 1, 0)
-        end
-        
-        if Direction.Magnitude > 0 then
-            Direction = Direction.Unit * FlySpeed
-        end
-        
-        BV.Velocity = Direction
     end)
 end
 
@@ -304,6 +289,9 @@ local function StopFlying()
     if Humanoid then
         Humanoid.PlatformStand = false
     end
+    
+    FlightControls.Visible = false
+    moveDirection = Vector3.new()
 end
 
 -- Toggle fly function
@@ -321,62 +309,48 @@ local function ToggleFly()
     end
 end
 
--- Connect button clicks with touch feedback
-FlyButton.MouseButton1Click:Connect(function()
-    ShowTouchFeedback(FlyButton.AbsolutePosition + FlyButton.AbsoluteSize/2)
-    ToggleFly()
-end)
+-- Connect button clicks
+FlyButton.MouseButton1Click:Connect(ToggleFly)
+BoostButton.MouseButton1Click:Connect(BoostUp)
+AirWalkButton.MouseButton1Click:Connect(ToggleAirWalk)
 
-BoostButton.MouseButton1Click:Connect(function()
-    ShowTouchFeedback(BoostButton.AbsolutePosition + BoostButton.AbsoluteSize/2)
-    BoostUp()
-end)
-
-AirWalkButton.MouseButton1Click:Connect(function()
-    ShowTouchFeedback(AirWalkButton.AbsolutePosition + AirWalkButton.AbsoluteSize/2)
-    ToggleAirWalk()
-end)
-
--- Touch screen support
-local TouchInput = game:GetService("UserInputService").TouchStarted:Connect(function(input, processed)
-    if processed then return end
+-- Flight control button handlers
+local function setupFlightControl(button, direction)
+    local active = false
     
-    local touchPos = input.Position
-    local buttons = {FlyButton, BoostButton, AirWalkButton}
+    button.MouseButton1Down:Connect(function()
+        active = true
+        moveDirection = moveDirection + direction
+        button.BackgroundColor3 = Color3.fromRGB(100, 100, 100)
+    end)
     
-    for _, button in ipairs(buttons) do
-        local buttonPos = button.AbsolutePosition
-        local buttonSize = button.AbsoluteSize
-        
-        if touchPos.X >= buttonPos.X and touchPos.X <= buttonPos.X + buttonSize.X and
-           touchPos.Y >= buttonPos.Y and touchPos.Y <= buttonPos.Y + buttonSize.Y then
-            ShowTouchFeedback(touchPos)
-            
-            if button == FlyButton then
-                ToggleFly()
-            elseif button == BoostButton then
-                BoostUp()
-            elseif button == AirWalkButton then
-                ToggleAirWalk()
-            end
-            
-            break
+    button.MouseButton1Up:Connect(function()
+        active = false
+        moveDirection = moveDirection - direction
+        button.BackgroundColor3 = Color3.fromRGB(60, 60, 60)
+    end)
+    
+    button.TouchLongPress:Connect(function()
+        active = true
+        moveDirection = moveDirection + direction
+        button.BackgroundColor3 = Color3.fromRGB(100, 100, 100)
+    end)
+    
+    button.TouchEnded:Connect(function()
+        if active then
+            active = false
+            moveDirection = moveDirection - direction
+            button.BackgroundColor3 = Color3.fromRGB(60, 60, 60)
         end
-    end
-end)
+    end)
+end
 
--- Key binds for physical keyboards
-game:GetService("UserInputService").InputBegan:Connect(function(Input, Processed)
-    if not Processed then
-        if Input.KeyCode == ToggleKey then
-            ToggleFly()
-        elseif Input.KeyCode == BoostKey then
-            BoostUp()
-        elseif Input.KeyCode == AirWalkKey then
-            ToggleAirWalk()
-        end
-    end
-end)
+-- Set up flight controls
+setupFlightControl(ForwardButton, Vector3.new(0, 0, -1))
+setupFlightControl(LeftButton, Vector3.new(-1, 0, 0))
+setupFlightControl(RightButton, Vector3.new(1, 0, 0))
+setupFlightControl(UpButton, Vector3.new(0, 1, 0))
+setupFlightControl(DownButton, Vector3.new(0, -1, 0))
 
 -- Anti-cheat bypass
 game:GetService("RunService").Heartbeat:Connect(function()
@@ -409,6 +383,5 @@ Player.CharacterAdded:Connect(function(NewCharacter)
     end
 end)
 
-print("Phone-friendly fly system loaded!")
-print("Controls: F - Fly, R - Boost, G - Air Walk")
-print("Touch the buttons on screen or use keyboard shortcuts")
+print("Mobile fly system loaded!")
+print("Tap buttons to control flight!")
