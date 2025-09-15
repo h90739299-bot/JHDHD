@@ -9,52 +9,21 @@ local Character = player.Character or player.CharacterAdded:Wait()
 local Humanoid = Character:WaitForChild("Humanoid")
 local RootPart = Character:WaitForChild("HumanoidRootPart")
 
+-- Случайные имена для элементов GUI и объектов для избежания обнаружения
+local randomNames = {
+    "UI_Container_"..tostring(math.random(10000, 99999)),
+    "Control_Panel_"..tostring(math.random(10000, 99999)),
+    "Flight_Module_"..tostring(math.random(10000, 99999)),
+    "Platform_System_"..tostring(math.random(10000, 99999))
+}
+
 -- Advanced Anti-Cheat Protection System
 local AntiAntiCheat = {
     Enabled = true,
     LastHealth = 100,
-    LastPosition = RootPart.Position
+    LastPosition = RootPart.Position,
+    DetectionAvoidance = true
 }
-
--- Anti-cheat bypass
-if not RunService:IsStudio() then
-    pcall(function()
-        -- Remove common anti-cheat systems
-        local ReplicatedStorage = game:GetService("ReplicatedStorage")
-        local ServerScriptService = game:GetService("ServerScriptService")
-        
-        local antiCheatLocations = {
-            ReplicatedStorage,
-            ServerScriptService,
-            workspace
-        }
-        
-        local antiCheatNames = {"AntiCheat", "AC", "Security", "AntiExploit", "AntiHack"}
-        
-        for _, location in pairs(antiCheatLocations) do
-            for _, name in pairs(antiCheatNames) do
-                local ac = location:FindFirstChild(name)
-                if ac then
-                    ac:Destroy()
-                    warn("Anti-Cheat removed: " .. name)
-                end
-            end
-        end
-    end)
-end
-
--- Create mobile-friendly GUI
-local ScreenGui = Instance.new("ScreenGui")
-ScreenGui.Name = "MobileFlyMenu"
-ScreenGui.Parent = game:GetService("CoreGui")
-
-local MainFrame = Instance.new("Frame")
-MainFrame.Size = UDim2.new(0.35, 0, 0.3, 0)
-MainFrame.Position = UDim2.new(0.02, 0, 0.02, 0)
-MainFrame.BackgroundColor3 = Color3.fromRGB(50, 50, 50)
-MainFrame.BorderSizePixel = 2
-MainFrame.BorderColor3 = Color3.fromRGB(100, 100, 100)
-MainFrame.Parent = ScreenGui
 
 -- Variables
 local FlyToggled = false
@@ -68,6 +37,20 @@ local lastPlatformTime = 0
 
 -- Check if we're on mobile
 local IsMobile = UserInputService.TouchEnabled
+
+-- Создаем GUI в PlayerGui вместо CoreGui для меньшей заметности
+local ScreenGui = Instance.new("ScreenGui")
+ScreenGui.Name = randomNames[1]
+ScreenGui.Parent = player:WaitForChild("PlayerGui")
+
+local MainFrame = Instance.new("Frame")
+MainFrame.Size = UDim2.new(0.35, 0, 0.3, 0)
+MainFrame.Position = UDim2.new(0.02, 0, 0.02, 0)
+MainFrame.BackgroundColor3 = Color3.fromRGB(50, 50, 50)
+MainFrame.BorderSizePixel = 2
+MainFrame.BorderColor3 = Color3.fromRGB(100, 100, 100)
+MainFrame.Name = randomNames[2]
+MainFrame.Parent = ScreenGui
 
 -- GUI elements table
 local GuiElements = {}
@@ -122,11 +105,13 @@ GuiElements.flyButton = CreateButton("FLY: OFF", 0.05, function()
         BodyGyro.P = 10000
         BodyGyro.MaxTorque = Vector3.new(9e9, 9e9, 9e9)
         BodyGyro.CFrame = RootPart.CFrame
+        BodyGyro.Name = randomNames[3]
         BodyGyro.Parent = RootPart
 
         BodyVelocity = Instance.new("BodyVelocity")
         BodyVelocity.Velocity = Vector3.new(0, 0, 0)
         BodyVelocity.MaxForce = Vector3.new(9e9, 9e9, 9e9)
+        BodyVelocity.Name = randomNames[4]
         BodyVelocity.Parent = RootPart
         
         SafeSetText(GuiElements.flyButton, "FLY: ON")
@@ -159,10 +144,10 @@ end, 0.4, 0.05)
 
 -- NoClip Button
 GuiElements.noclipButton = CreateButton("NOCLIP: OFF", 0.3, function()
-    local noclipEnabled = not Workspace.CurrentCamera:FindFirstChild("Noclip")
+    local noclipPart = Workspace.CurrentCamera:FindFirstChild("Noclip")
     
-    if noclipEnabled then
-        local noclipPart = Instance.new("Part")
+    if not noclipPart then
+        noclipPart = Instance.new("Part")
         noclipPart.Name = "Noclip"
         noclipPart.Size = Vector3.new(2, 2, 2)
         noclipPart.Transparency = 1
@@ -173,11 +158,7 @@ GuiElements.noclipButton = CreateButton("NOCLIP: OFF", 0.3, function()
         SafeSetText(GuiElements.noclipButton, "NOCLIP: ON")
         GuiElements.noclipButton.BackgroundColor3 = Color3.fromRGB(0, 150, 0)
     else
-        local noclipPart = Workspace.CurrentCamera:FindFirstChild("Noclip")
-        if noclipPart then
-            noclipPart:Destroy()
-        end
-        
+        noclipPart:Destroy()
         SafeSetText(GuiElements.noclipButton, "NOCLIP: OFF")
         GuiElements.noclipButton.BackgroundColor3 = Color3.fromRGB(80, 80, 80)
     end
@@ -203,7 +184,7 @@ local mobileRight = false
 if IsMobile then
     local touchGui = Instance.new("ScreenGui")
     touchGui.Name = "MobileFlightControls"
-    touchGui.Parent = game:GetService("CoreGui")
+    touchGui.Parent = player:WaitForChild("PlayerGui")
     
     -- Up button
     local upButton = Instance.new("TextButton")
@@ -292,35 +273,37 @@ local function SetupAntiCheatProtection()
     if Humanoid then
         Humanoid.HealthChanged:Connect(function()
             if AntiAntiCheat.Enabled and Humanoid.Health < 10 then
-                Humanoid.Health = 100
+                -- Менее заметное восстановление здоровья
+                for i = 1, 10 do
+                    if Humanoid and Humanoid.Health > 0 then
+                        Humanoid.Health = Humanoid.Health + 9
+                        wait(0.05)
+                    end
+                end
             end
         end)
     end
     
     -- Prevent unexpected position changes (jail teleport)
     if RootPart then
+        local lastValidPosition = RootPart.Position
+        
         RootPart:GetPropertyChangedSignal("Position"):Connect(function()
             if AntiAntiCheat.Enabled then
-                local distance = (RootPart.Position - AntiAntiCheat.LastPosition).Magnitude
-                if distance > 100 then
-                    delay(0.5, function()
+                local distance = (RootPart.Position - lastValidPosition).Magnitude
+                -- Более тонкая проверка на телепортацию
+                if distance > 100 and Humanoid and Humanoid.Health > 0 then
+                    delay(1.5, function()  -- Увеличенная задержка
                         if RootPart and RootPart.Parent then
-                            RootPart.CFrame = CFrame.new(AntiAntiCheat.LastPosition)
+                            RootPart.CFrame = CFrame.new(lastValidPosition)
                         end
                     end)
+                else
+                    lastValidPosition = RootPart.Position
                 end
-                AntiAntiCheat.LastPosition = RootPart.Position
             end
         end)
     end
-    
-    -- Reconnect if kicked
-    Players.PlayerRemoving:Connect(function(leavingPlayer)
-        if AntiAntiCheat.Enabled and leavingPlayer == player then
-            wait(3)
-            game:GetService("TeleportService"):TeleportToPlaceInstance(game.PlaceId, game.JobId, player)
-        end
-    end)
 end
 
 -- Initialize anti-cheat protection
@@ -335,25 +318,25 @@ RunService.Heartbeat:Connect(function(deltaTime)
     end
     
     -- Handle flight
-    if FlyToggled then
+    if FlyToggled and RootPart and RootPart.Parent then
         -- Ensure physics objects exist
         if not BodyGyro or not BodyVelocity or not BodyGyro.Parent or not BodyVelocity.Parent then
-            if RootPart and RootPart.Parent then
-                BodyGyro = Instance.new("BodyGyro")
-                BodyGyro.P = 10000
-                BodyGyro.MaxTorque = Vector3.new(9e9, 9e9, 9e9)
-                BodyGyro.CFrame = RootPart.CFrame
-                BodyGyro.Parent = RootPart
+            BodyGyro = Instance.new("BodyGyro")
+            BodyGyro.P = 10000
+            BodyGyro.MaxTorque = Vector3.new(9e9, 9e9, 9e9)
+            BodyGyro.CFrame = RootPart.CFrame
+            BodyGyro.Name = randomNames[3]
+            BodyGyro.Parent = RootPart
 
-                BodyVelocity = Instance.new("BodyVelocity")
-                BodyVelocity.Velocity = Vector3.new(0, 0, 0)
-                BodyVelocity.MaxForce = Vector3.new(9e9, 9e9, 9e9)
-                BodyVelocity.Parent = RootPart
-            end
+            BodyVelocity = Instance.new("BodyVelocity")
+            BodyVelocity.Velocity = Vector3.new(0, 0, 0)
+            BodyVelocity.MaxForce = Vector3.new(9e9, 9e9, 9e9)
+            BodyVelocity.Name = randomNames[4]
+            BodyVelocity.Parent = RootPart
         end
         
         -- Flight controls
-        if BodyGyro and BodyVelocity and RootPart and RootPart.Parent then
+        if BodyGyro and BodyVelocity then
             local camera = Workspace.CurrentCamera
             if camera then
                 BodyGyro.CFrame = camera.CFrame
@@ -396,12 +379,20 @@ RunService.Heartbeat:Connect(function(deltaTime)
                     end
                 end
                 
+                -- Add vertical controls for PC
+                if UserInputService:IsKeyDown(Enum.KeyCode.Space) then
+                    moveDirection = moveDirection + Vector3.new(0, FlySpeed, 0)
+                end
+                if UserInputService:IsKeyDown(Enum.KeyCode.LeftControl) or UserInputService:IsKeyDown(Enum.KeyCode.ButtonB) then
+                    moveDirection = moveDirection - Vector3.new(0, FlySpeed, 0)
+                end
+                
                 BodyVelocity.Velocity = moveDirection
             end
         end
     end
     
-    -- Platform walk system - faster spawning
+    -- Platform walk system
     if PlatformWalk and not FlyToggled and Humanoid and Humanoid.FloorMaterial == Enum.Material.Air then
         local currentTime = tick()
         if currentTime - lastPlatformTime >= PlatformCooldown then
@@ -414,8 +405,8 @@ RunService.Heartbeat:Connect(function(deltaTime)
             
             -- Create a new platform below the player
             local platform = Instance.new("Part")
-            platform.Size = Vector3.new(8, 1, 8)  -- Larger platform
-            platform.Position = RootPart.Position - Vector3.new(0, 3.5, 0)  -- Closer to player
+            platform.Size = Vector3.new(8, 1, 8)
+            platform.Position = RootPart.Position - Vector3.new(0, 4, 0)
             platform.Anchored = true
             platform.CanCollide = true
             platform.Transparency = 0.4
@@ -433,8 +424,8 @@ RunService.Heartbeat:Connect(function(deltaTime)
                 end
             end)
         end
-    elseif LastPlatform and LastPlatform.Parent then
-        -- Remove platform when we're back on ground
+    elseif LastPlatform and LastPlatform.Parent and (Humanoid.FloorMaterial ~= Enum.Material.Air or not PlatformWalk) then
+        -- Remove platform when we're back on ground or platform walk is disabled
         LastPlatform:Destroy()
         LastPlatform = nil
     end
@@ -467,13 +458,16 @@ player.CharacterAdded:Connect(function(newCharacter)
     end
 end)
 
-print("✅ Mobile Fly & Platform with Anti-Cheat loaded successfully!")
-print("📱 Mobile controls: " .. tostring(IsMobile))
-print("🛡️ Anti-Cheat protection: " .. tostring(AntiAntiCheat.Enabled))
+-- Создаем функцию для скрытия/показа GUI
+local function ToggleGUI()
+    MainFrame.Visible = not MainFrame.Visible
+end
 
--- Instructions
-warn("=== INSTRUCTIONS ===")
-warn("FLY: W/A/S/D or Arrow Keys for movement")
-warn("PLATFORM: Creates platforms when walking in air")
-warn("NOCLIP: Walk through walls")
-warn("ANTI-CHEAT: Prevents kicks and deaths")
+-- Добавляем горячую клавишу для скрытия GUI (например, F5)
+UserInputService.InputBegan:Connect(function(input, gameProcessed)
+    if gameProcessed then return end
+    
+    if input.KeyCode == Enum.KeyCode.F5 then
+        ToggleGUI()
+    end
+end)
