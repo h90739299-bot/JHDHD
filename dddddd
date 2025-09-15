@@ -3,60 +3,65 @@ local Players = game:GetService("Players")
 local RunService = game:GetService("RunService")
 local UserInputService = game:GetService("UserInputService")
 local Workspace = game:GetService("Workspace")
+local CoreGui = game:GetService("CoreGui")
+local TweenService = game:GetService("TweenService")
 
 local player = Players.LocalPlayer
 local Character = player.Character or player.CharacterAdded:Wait()
 local Humanoid = Character:WaitForChild("Humanoid")
 local RootPart = Character:WaitForChild("HumanoidRootPart")
 
+-- Случайные имена для маскировки
+local randomNames = {
+    "PlayerGui", "ChatMain", "Notification", "HealthBar", 
+    "SettingsMenu", "InventoryUI", "Scoreboard", "MiniMap"
+}
+
+-- Выбор случайного имени
+local randomName = randomNames[math.random(1, #randomNames)]
+
 -- Advanced Anti-Cheat Protection System
 local AntiAntiCheat = {
     Enabled = true,
     LastHealth = 100,
-    LastPosition = RootPart.Position
+    LastPosition = RootPart.Position,
+    StealthMode = true
 }
 
--- Anti-cheat bypass
-if not RunService:IsStudio() then
-    pcall(function()
-        -- Remove common anti-cheat systems
-        local ReplicatedStorage = game:GetService("ReplicatedStorage")
-        local ServerScriptService = game:GetService("ServerScriptService")
-        
-        local antiCheatLocations = {
-            ReplicatedStorage,
-            ServerScriptService,
-            workspace
-        }
-        
-        local antiCheatNames = {"AntiCheat", "AC", "Security", "AntiExploit", "AntiHack"}
-        
-        for _, location in pairs(antiCheatLocations) do
-            for _, name in pairs(antiCheatNames) do
-                local ac = location:FindFirstChild(name)
-                if ac then
-                    ac:Destroy()
-                    warn("Anti-Cheat removed: " .. name)
-                end
-            end
-        end
-    end)
+-- Функция для безопасного выполнения
+local function safeCall(callback, ...)
+    local success, result = pcall(callback, ...)
+    if not success then
+        warn("Safe call error:", result)
+    end
+    return success, result
 end
 
--- Create mobile-friendly GUI
+-- Маскировка под обычный GUI
 local ScreenGui = Instance.new("ScreenGui")
-ScreenGui.Name = "MobileFlyMenu"
-ScreenGui.Parent = game:GetService("CoreGui")
+ScreenGui.Name = randomName
+ScreenGui.Parent = CoreGui
 
+-- Основной фрейм с маскировкой
 local MainFrame = Instance.new("Frame")
 MainFrame.Size = UDim2.new(0.35, 0, 0.3, 0)
 MainFrame.Position = UDim2.new(0.02, 0, 0.02, 0)
-MainFrame.BackgroundColor3 = Color3.fromRGB(50, 50, 50)
-MainFrame.BorderSizePixel = 2
-MainFrame.BorderColor3 = Color3.fromRGB(100, 100, 100)
+MainFrame.BackgroundColor3 = Color3.fromRGB(40, 40, 40)
+MainFrame.BorderSizePixel = 0
+MainFrame.BackgroundTransparency = 0.3
 MainFrame.Parent = ScreenGui
 
--- Variables
+-- Добавляем случайные элементы для маскировки
+local fakeText = Instance.new("TextLabel")
+fakeText.Size = UDim2.new(0.8, 0, 0.2, 0)
+fakeText.Position = UDim2.new(0.1, 0, 0.1, 0)
+fakeText.Text = "System UI"
+fakeText.TextColor3 = Color3.fromRGB(200, 200, 200)
+fakeText.BackgroundTransparency = 1
+fakeText.TextSize = 14
+fakeText.Parent = MainFrame
+
+-- Переменные
 local FlyToggled = false
 local FlySpeed = 25
 local BodyGyro = nil
@@ -65,47 +70,71 @@ local PlatformWalk = false
 local LastPlatform = nil
 local PlatformCooldown = 0.1
 local lastPlatformTime = 0
-
--- Check if we're on mobile
 local IsMobile = UserInputService.TouchEnabled
-
--- GUI elements table
 local GuiElements = {}
+local uiHidden = false
+local toggleKey = Enum.KeyCode.F
 
--- Safe function to update text
-local function SafeSetText(element, text)
-    if element and element.Parent then
-        element.Text = text
+-- Функция для скрытия/показа UI
+local function toggleUI()
+    uiHidden = not uiHidden
+    MainFrame.Visible = not uiHidden
+    
+    if uiHidden then
+        -- Показываем временное уведомление
+        local notification = Instance.new("TextLabel")
+        notification.Size = UDim2.new(0.3, 0, 0.05, 0)
+        notification.Position = UDim2.new(0.35, 0, 0.01, 0)
+        notification.Text = "UI Hidden - Press " .. tostring(toggleKey) .. " to show"
+        notification.TextColor3 = Color3.fromRGB(255, 255, 255)
+        notification.BackgroundColor3 = Color3.fromRGB(40, 40, 40)
+        notification.BorderSizePixel = 0
+        notification.TextSize = 12
+        notification.Parent = ScreenGui
+        
+        delay(3, function()
+            if notification and notification.Parent then
+                notification:Destroy()
+            end
+        end)
     end
 end
 
--- Create button function
+-- Назначаем клавишу для скрытия/показа UI
+UserInputService.InputBegan:Connect(function(input, processed)
+    if not processed and input.KeyCode == toggleKey then
+        toggleUI()
+    end
+end)
+
+-- Создание кнопок с маскировкой
 local function CreateButton(text, yPosition, callback, width, xPosition)
     local button = Instance.new("TextButton")
     button.Size = UDim2.new(width or 0.9, 0, 0.2, 0)
     button.Position = UDim2.new(xPosition or 0.05, 0, yPosition, 0)
     button.Text = text
     button.TextColor3 = Color3.fromRGB(255, 255, 255)
-    button.BackgroundColor3 = Color3.fromRGB(80, 80, 80)
+    button.BackgroundColor3 = Color3.fromRGB(60, 60, 60)
     button.BorderSizePixel = 0
     button.TextSize = IsMobile and 12 or 14
+    button.ZIndex = 2
     button.Parent = MainFrame
     
     button.MouseButton1Click:Connect(function()
-        pcall(callback)
+        safeCall(callback)
     end)
     return button
 end
 
 -- Anti-Cheat Protection Button
-GuiElements.antiCheatButton = CreateButton("ANTI-CHEAT: ON", 0.05, function()
+GuiElements.antiCheatButton = CreateButton("AC: ON", 0.05, function()
     AntiAntiCheat.Enabled = not AntiAntiCheat.Enabled
     if AntiAntiCheat.Enabled then
-        SafeSetText(GuiElements.antiCheatButton, "ANTI-CHEAT: ON")
-        GuiElements.antiCheatButton.BackgroundColor3 = Color3.fromRGB(0, 150, 0)
+        GuiElements.antiCheatButton.Text = "AC: ON"
+        GuiElements.antiCheatButton.BackgroundColor3 = Color3.fromRGB(0, 100, 0)
     else
-        SafeSetText(GuiElements.antiCheatButton, "ANTI-CHEAT: OFF")
-        GuiElements.antiCheatButton.BackgroundColor3 = Color3.fromRGB(150, 0, 0)
+        GuiElements.antiCheatButton.Text = "AC: OFF"
+        GuiElements.antiCheatButton.BackgroundColor3 = Color3.fromRGB(100, 0, 0)
     end
 end, 0.4)
 
@@ -114,52 +143,68 @@ GuiElements.flyButton = CreateButton("FLY: OFF", 0.05, function()
     FlyToggled = not FlyToggled
     
     if FlyToggled then
-        -- Remove old physics objects if they exist
+        -- Удаляем старые физические объекты
         if BodyGyro then BodyGyro:Destroy() end
         if BodyVelocity then BodyVelocity:Destroy() end
         
-        BodyGyro = Instance.new("BodyGyro")
-        BodyGyro.P = 10000
-        BodyGyro.MaxTorque = Vector3.new(9e9, 9e9, 9e9)
-        BodyGyro.CFrame = RootPart.CFrame
-        BodyGyro.Parent = RootPart
+        -- Создаем с задержкой для избежания обнаружения
+        delay(0.2, function()
+            BodyGyro = Instance.new("BodyGyro")
+            BodyGyro.P = 5000  -- Меньшее значение для меньшей подозрительности
+            BodyGyro.MaxTorque = Vector3.new(10000, 10000, 10000)  -- Меньшие значения
+            BodyGyro.CFrame = RootPart.CFrame
+            BodyGyro.Parent = RootPart
 
-        BodyVelocity = Instance.new("BodyVelocity")
-        BodyVelocity.Velocity = Vector3.new(0, 0, 0)
-        BodyVelocity.MaxForce = Vector3.new(9e9, 9e9, 9e9)
-        BodyVelocity.Parent = RootPart
+            BodyVelocity = Instance.new("BodyVelocity")
+            BodyVelocity.Velocity = Vector3.new(0, 0.1, 0)  -- Небольшая начальная скорость
+            BodyVelocity.MaxForce = Vector3.new(10000, 10000, 10000)  -- Меньшие значения
+            BodyVelocity.Parent = RootPart
+        end)
         
-        SafeSetText(GuiElements.flyButton, "FLY: ON")
-        GuiElements.flyButton.BackgroundColor3 = Color3.fromRGB(0, 150, 0)
+        GuiElements.flyButton.Text = "FLY: ON"
+        GuiElements.flyButton.BackgroundColor3 = Color3.fromRGB(0, 100, 0)
         
-        -- Show mobile controls if on mobile
+        -- Показываем мобильные контролы если на мобильном
         if IsMobile and GuiElements.mobileControls then
             GuiElements.mobileControls.Visible = true
         end
     else
-        if BodyGyro then BodyGyro:Destroy() end
-        if BodyVelocity then BodyVelocity:Destroy() end
-        SafeSetText(GuiElements.flyButton, "FLY: OFF")
-        GuiElements.flyButton.BackgroundColor3 = Color3.fromRGB(80, 80, 80)
+        -- Плавное отключение
+        if BodyVelocity then
+            local tweenInfo = TweenInfo.new(0.5, Enum.EasingStyle.Quad, Enum.EasingDirection.Out)
+            local tween = TweenService:Create(BodyVelocity, tweenInfo, {Velocity = Vector3.new(0, -5, 0)})
+            tween:Play()
+            
+            delay(0.5, function()
+                if BodyGyro then BodyGyro:Destroy() end
+                if BodyVelocity then BodyVelocity:Destroy() end
+            end)
+        else
+            if BodyGyro then BodyGyro:Destroy() end
+            if BodyVelocity then BodyVelocity:Destroy() end
+        end
         
-        -- Hide mobile controls if on mobile
+        GuiElements.flyButton.Text = "FLY: OFF"
+        GuiElements.flyButton.BackgroundColor3 = Color3.fromRGB(60, 60, 60)
+        
+        -- Скрываем мобильные контролы
         if IsMobile and GuiElements.mobileControls then
             GuiElements.mobileControls.Visible = false
         end
     end
 end, 0.4, 0.5)
 
+-- Остальные кнопки (Platform, NoClip, Speed) остаются без значительных изменений
 -- Platform Walk Button
-GuiElements.platformButton = CreateButton("PLATFORM: OFF", 0.3, function()
+GuiElements.platformButton = CreateButton("PLAT: OFF", 0.3, function()
     PlatformWalk = not PlatformWalk
     if PlatformWalk then
-        SafeSetText(GuiElements.platformButton, "PLATFORM: ON")
-        GuiElements.platformButton.BackgroundColor3 = Color3.fromRGB(0, 150, 0)
+        GuiElements.platformButton.Text = "PLAT: ON"
+        GuiElements.platformButton.BackgroundColor3 = Color3.fromRGB(0, 100, 0)
     else
-        SafeSetText(GuiElements.platformButton, "PLATFORM: OFF")
-        GuiElements.platformButton.BackgroundColor3 = Color3.fromRGB(80, 80, 80)
+        GuiElements.platformButton.Text = "PLAT: OFF"
+        GuiElements.platformButton.BackgroundColor3 = Color3.fromRGB(60, 60, 60)
         
-        -- Remove platform when turning off
         if LastPlatform and LastPlatform.Parent then
             LastPlatform:Destroy()
             LastPlatform = nil
@@ -168,7 +213,7 @@ GuiElements.platformButton = CreateButton("PLATFORM: OFF", 0.3, function()
 end, 0.4, 0.05)
 
 -- NoClip Button
-GuiElements.noclipButton = CreateButton("NOCLIP: OFF", 0.3, function()
+GuiElements.noclipButton = CreateButton("NCLP: OFF", 0.3, function()
     local noclipEnabled = not Workspace.CurrentCamera:FindFirstChild("Noclip")
     
     if noclipEnabled then
@@ -180,35 +225,34 @@ GuiElements.noclipButton = CreateButton("NOCLIP: OFF", 0.3, function()
         noclipPart.Anchored = true
         noclipPart.Parent = Workspace.CurrentCamera
         
-        SafeSetText(GuiElements.noclipButton, "NOCLIP: ON")
-        GuiElements.noclipButton.BackgroundColor3 = Color3.fromRGB(0, 150, 0)
+        GuiElements.noclipButton.Text = "NCLP: ON"
+        GuiElements.noclipButton.BackgroundColor3 = Color3.fromRGB(0, 100, 0)
     else
         local noclipPart = Workspace.CurrentCamera:FindFirstChild("Noclip")
         if noclipPart then
             noclipPart:Destroy()
         end
         
-        SafeSetText(GuiElements.noclipButton, "NOCLIP: OFF")
-        GuiElements.noclipButton.BackgroundColor3 = Color3.fromRGB(80, 80, 80)
+        GuiElements.noclipButton.Text = "NCLP: OFF"
+        GuiElements.noclipButton.BackgroundColor3 = Color3.fromRGB(60, 60, 60)
     end
 end, 0.4, 0.5)
 
 -- Speed Control Button
-GuiElements.speedButton = CreateButton("SPEED: " .. FlySpeed, 0.55, function()
+GuiElements.speedButton = CreateButton("SPD: " .. FlySpeed, 0.55, function()
     FlySpeed = FlySpeed + 5
     if FlySpeed > 50 then
         FlySpeed = 10
     end
-    SafeSetText(GuiElements.speedButton, "SPEED: " .. FlySpeed)
+    GuiElements.speedButton.Text = "SPD: " .. FlySpeed
 end, 0.8, 0.05)
 
--- Mobile flight controls
+-- Мобильные контролы
 if IsMobile then
     local touchGui = Instance.new("ScreenGui")
-    touchGui.Name = "MobileFlightControls"
-    touchGui.Parent = game:GetService("CoreGui")
+    touchGui.Name = "MobileControls"
+    touchGui.Parent = CoreGui
     
-    -- Mobile controls frame (initially hidden)
     local controlsFrame = Instance.new("Frame")
     controlsFrame.Size = UDim2.new(0.3, 0, 0.4, 0)
     controlsFrame.Position = UDim2.new(0.68, 0, 0.5, 0)
@@ -217,7 +261,6 @@ if IsMobile then
     controlsFrame.Parent = touchGui
     GuiElements.mobileControls = controlsFrame
     
-    -- Control buttons with transparent background
     local controlButtons = {
         up = {text = "↑", position = UDim2.new(0.35, 0, 0, 0), key = Enum.KeyCode.W},
         down = {text = "↓", position = UDim2.new(0.35, 0, 0.7, 0), key = Enum.KeyCode.S},
@@ -227,10 +270,8 @@ if IsMobile then
         backward = {text = "B", position = UDim2.new(0, 0, 0, 0), key = Enum.KeyCode.Q}
     }
     
-    -- Mobile control state
     local mobileControlsState = {}
     
-    -- Create control buttons
     for name, info in pairs(controlButtons) do
         local button = Instance.new("TextButton")
         button.Size = UDim2.new(0.25, 0, 0.25, 0)
@@ -238,12 +279,11 @@ if IsMobile then
         button.Text = info.text
         button.TextSize = 20
         button.BackgroundColor3 = Color3.fromRGB(80, 80, 80)
-        button.BackgroundTransparency = 0.5
+        button.BackgroundTransparency = 0.7
         button.BorderSizePixel = 0
         button.TextColor3 = Color3.fromRGB(255, 255, 255)
         button.Parent = controlsFrame
         
-        -- Button events
         button.MouseButton1Down:Connect(function()
             mobileControlsState[info.key] = true
         end)
@@ -257,7 +297,6 @@ if IsMobile then
         end)
     end
     
-    -- Mobile flight control logic
     RunService.Heartbeat:Connect(function()
         if FlyToggled and BodyVelocity then
             local moveDirection = Vector3.new(0, 0, 0)
@@ -287,9 +326,8 @@ if IsMobile then
     end)
 end
 
--- Anti-Kick and Anti-Death Protection
+-- Анти-чит защита
 local function SetupAntiCheatProtection()
-    -- Prevent character from dying
     if Humanoid then
         Humanoid.HealthChanged:Connect(function()
             if AntiAntiCheat.Enabled and Humanoid.Health < 10 then
@@ -298,7 +336,6 @@ local function SetupAntiCheatProtection()
         end)
     end
     
-    -- Prevent unexpected position changes (jail teleport)
     if RootPart then
         RootPart:GetPropertyChangedSignal("Position"):Connect(function()
             if AntiAntiCheat.Enabled then
@@ -315,7 +352,6 @@ local function SetupAntiCheatProtection()
         end)
     end
     
-    -- Reconnect if kicked
     Players.PlayerRemoving:Connect(function(leavingPlayer)
         if AntiAntiCheat.Enabled and leavingPlayer == player then
             wait(3)
@@ -324,36 +360,32 @@ local function SetupAntiCheatProtection()
     end)
 end
 
--- Initialize anti-cheat protection
 SetupAntiCheatProtection()
 
--- Flight control and platform system
+-- Основной цикл
 RunService.Heartbeat:Connect(function(deltaTime)
-    -- Update anti-cheat protection
     if AntiAntiCheat.Enabled then
         AntiAntiCheat.LastHealth = Humanoid.Health
         AntiAntiCheat.LastPosition = RootPart.Position
     end
     
-    -- Handle flight
+    -- Полёт
     if FlyToggled then
-        -- Ensure physics objects exist
         if not BodyGyro or not BodyVelocity or not BodyGyro.Parent or not BodyVelocity.Parent then
             if RootPart and RootPart.Parent then
                 BodyGyro = Instance.new("BodyGyro")
-                BodyGyro.P = 10000
-                BodyGyro.MaxTorque = Vector3.new(9e9, 9e9, 9e9)
+                BodyGyro.P = 5000
+                BodyGyro.MaxTorque = Vector3.new(10000, 10000, 10000)
                 BodyGyro.CFrame = RootPart.CFrame
                 BodyGyro.Parent = RootPart
 
                 BodyVelocity = Instance.new("BodyVelocity")
-                BodyVelocity.Velocity = Vector3.new(0, 0, 0)
-                BodyVelocity.MaxForce = Vector3.new(9e9, 9e9, 9e9)
+                BodyVelocity.Velocity = Vector3.new(0, 0.1, 0)
+                BodyVelocity.MaxForce = Vector3.new(10000, 10000, 10000)
                 BodyVelocity.Parent = RootPart
             end
         end
         
-        -- Flight controls for non-mobile
         if not IsMobile and BodyGyro and BodyVelocity and RootPart and RootPart.Parent then
             local camera = Workspace.CurrentCamera
             if camera then
@@ -385,32 +417,29 @@ RunService.Heartbeat:Connect(function(deltaTime)
         end
     end
     
-    -- Platform walk system - faster spawning
+    -- Платформы
     if PlatformWalk and not FlyToggled and Humanoid and Humanoid.FloorMaterial == Enum.Material.Air then
         local currentTime = tick()
         if currentTime - lastPlatformTime >= PlatformCooldown then
             lastPlatformTime = currentTime
             
-            -- Remove old platform if it exists
             if LastPlatform and LastPlatform.Parent then
                 LastPlatform:Destroy()
             end
             
-            -- Create a new platform below the player
             local platform = Instance.new("Part")
-            platform.Size = Vector3.new(8, 1, 8)  -- Larger platform
-            platform.Position = RootPart.Position - Vector3.new(0, 3.5, 0)  -- Closer to player
+            platform.Size = Vector3.new(8, 1, 8)
+            platform.Position = RootPart.Position - Vector3.new(0, 3.5, 0)
             platform.Anchored = true
             platform.CanCollide = true
             platform.Transparency = 0.4
             platform.BrickColor = BrickColor.new("Bright blue")
             platform.Material = Enum.Material.Neon
-            platform.Name = "PlayerPlatform"
+            platform.Name = "TempPlatform"
             platform.Parent = Workspace
             
             LastPlatform = platform
             
-            -- Remove platform after a short time
             delay(1.2, function()
                 if platform and platform.Parent then
                     platform:Destroy()
@@ -418,12 +447,11 @@ RunService.Heartbeat:Connect(function(deltaTime)
             end)
         end
     elseif LastPlatform and LastPlatform.Parent then
-        -- Remove platform when we're back on ground
         LastPlatform:Destroy()
         LastPlatform = nil
     end
     
-    -- NoClip functionality
+    -- NoClip
     local noclipPart = Workspace.CurrentCamera:FindFirstChild("Noclip")
     if noclipPart and Character then
         for _, part in pairs(Character:GetDescendants()) do
@@ -434,13 +462,12 @@ RunService.Heartbeat:Connect(function(deltaTime)
     end
 end)
 
--- Character respawn handling
+-- Обработка respawn
 player.CharacterAdded:Connect(function(newCharacter)
     Character = newCharacter
     Humanoid = newCharacter:WaitForChild("Humanoid")
     RootPart = newCharacter:WaitForChild("HumanoidRootPart")
     
-    -- Re-enable flight if it was active
     if FlyToggled then
         FlyToggled = false
         delay(0.5, function()
@@ -451,13 +478,14 @@ player.CharacterAdded:Connect(function(newCharacter)
     end
 end)
 
-print("✅ Mobile Fly & Platform with Anti-Cheat loaded successfully!")
+-- Авто-скрытие UI через 10 секунд
+delay(10, function()
+    if not uiHidden then
+        toggleUI()
+    end
+end)
+
+print("✅ Stealth Fly & Platform loaded!")
 print("📱 Mobile controls: " .. tostring(IsMobile))
 print("🛡️ Anti-Cheat protection: " .. tostring(AntiAntiCheat.Enabled))
-
--- Instructions
-warn("=== INSTRUCTIONS ===")
-warn("FLY: W/A/S/D for movement, E/Q for up/down")
-warn("PLATFORM: Creates platforms when walking in air")
-warn("NOCLIP: Walk through walls")
-warn("ANTI-CHEAT: Prevents kicks and deaths")
+print("🎮 Press " .. tostring(toggleKey) .. " to toggle UI")
