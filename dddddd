@@ -1,4 +1,4 @@
--- Simple Mobile Fly Script for Roblox
+-- Mobile Fly & Platform Script for Roblox with Anti-Cheat Protection
 local Players = game:GetService("Players")
 local RunService = game:GetService("RunService")
 local UserInputService = game:GetService("UserInputService")
@@ -9,13 +9,47 @@ local Character = player.Character or player.CharacterAdded:Wait()
 local Humanoid = Character:WaitForChild("Humanoid")
 local RootPart = Character:WaitForChild("HumanoidRootPart")
 
--- Create simple GUI
+-- Advanced Anti-Cheat Protection System
+local AntiAntiCheat = {
+    Enabled = true,
+    LastHealth = 100,
+    LastPosition = RootPart.Position
+}
+
+-- Anti-cheat bypass
+if not RunService:IsStudio() then
+    pcall(function()
+        -- Remove common anti-cheat systems
+        local ReplicatedStorage = game:GetService("ReplicatedStorage")
+        local ServerScriptService = game:GetService("ServerScriptService")
+        
+        local antiCheatLocations = {
+            ReplicatedStorage,
+            ServerScriptService,
+            workspace
+        }
+        
+        local antiCheatNames = {"AntiCheat", "AC", "Security", "AntiExploit", "AntiHack"}
+        
+        for _, location in pairs(antiCheatLocations) do
+            for _, name in pairs(antiCheatNames) do
+                local ac = location:FindFirstChild(name)
+                if ac then
+                    ac:Destroy()
+                    warn("Anti-Cheat removed: " .. name)
+                end
+            end
+        end
+    end)
+end
+
+-- Create mobile-friendly GUI
 local ScreenGui = Instance.new("ScreenGui")
-ScreenGui.Name = "SimpleFlyMenu"
+ScreenGui.Name = "MobileFlyMenu"
 ScreenGui.Parent = game:GetService("CoreGui")
 
 local MainFrame = Instance.new("Frame")
-MainFrame.Size = UDim2.new(0.25, 0, 0.15, 0)
+MainFrame.Size = UDim2.new(0.35, 0, 0.3, 0)
 MainFrame.Position = UDim2.new(0.02, 0, 0.02, 0)
 MainFrame.BackgroundColor3 = Color3.fromRGB(50, 50, 50)
 MainFrame.BorderSizePixel = 2
@@ -27,24 +61,34 @@ local FlyToggled = false
 local FlySpeed = 25
 local BodyGyro = nil
 local BodyVelocity = nil
+local PlatformWalk = false
+local LastPlatform = nil
+local PlatformCooldown = 0.1
+local lastPlatformTime = 0
 
 -- Check if we're on mobile
 local IsMobile = UserInputService.TouchEnabled
 
--- Mobile control variables
-local mobileUp = false
-local mobileDown = false
+-- GUI elements table
+local GuiElements = {}
+
+-- Safe function to update text
+local function SafeSetText(element, text)
+    if element and element.Parent then
+        element.Text = text
+    end
+end
 
 -- Create button function
 local function CreateButton(text, yPosition, callback, width, xPosition)
     local button = Instance.new("TextButton")
-    button.Size = UDim2.new(width or 0.9, 0, 0.4, 0)
+    button.Size = UDim2.new(width or 0.9, 0, 0.2, 0)
     button.Position = UDim2.new(xPosition or 0.05, 0, yPosition, 0)
     button.Text = text
     button.TextColor3 = Color3.fromRGB(255, 255, 255)
     button.BackgroundColor3 = Color3.fromRGB(80, 80, 80)
     button.BorderSizePixel = 0
-    button.TextSize = 12
+    button.TextSize = IsMobile and 12 or 14
     button.Parent = MainFrame
     
     button.MouseButton1Click:Connect(function()
@@ -53,14 +97,26 @@ local function CreateButton(text, yPosition, callback, width, xPosition)
     return button
 end
 
+-- Anti-Cheat Protection Button
+GuiElements.antiCheatButton = CreateButton("ANTI-CHEAT: ON", 0.05, function()
+    AntiAntiCheat.Enabled = not AntiAntiCheat.Enabled
+    if AntiAntiCheat.Enabled then
+        SafeSetText(GuiElements.antiCheatButton, "ANTI-CHEAT: ON")
+        GuiElements.antiCheatButton.BackgroundColor3 = Color3.fromRGB(0, 150, 0)
+    else
+        SafeSetText(GuiElements.antiCheatButton, "ANTI-CHEAT: OFF")
+        GuiElements.antiCheatButton.BackgroundColor3 = Color3.fromRGB(150, 0, 0)
+    end
+end, 0.4)
+
 -- Fly Button
-local flyButton = CreateButton("FLY: OFF", 0.05, function()
+GuiElements.flyButton = CreateButton("FLY: OFF", 0.05, function()
     FlyToggled = not FlyToggled
     
     if FlyToggled then
         -- Remove old physics objects if they exist
-        if BodyGyro then pcall(function() BodyGyro:Destroy() end) end
-        if BodyVelocity then pcall(function() BodyVelocity:Destroy() end) end
+        if BodyGyro then BodyGyro:Destroy() end
+        if BodyVelocity then BodyVelocity:Destroy() end
         
         BodyGyro = Instance.new("BodyGyro")
         BodyGyro.P = 10000
@@ -73,71 +129,217 @@ local flyButton = CreateButton("FLY: OFF", 0.05, function()
         BodyVelocity.MaxForce = Vector3.new(9e9, 9e9, 9e9)
         BodyVelocity.Parent = RootPart
         
-        flyButton.Text = "FLY: ON"
-        flyButton.BackgroundColor3 = Color3.fromRGB(0, 150, 0)
+        SafeSetText(GuiElements.flyButton, "FLY: ON")
+        GuiElements.flyButton.BackgroundColor3 = Color3.fromRGB(0, 150, 0)
+        
+        -- Show mobile controls if on mobile
+        if IsMobile and GuiElements.mobileControls then
+            GuiElements.mobileControls.Visible = true
+        end
     else
-        if BodyGyro then pcall(function() BodyGyro:Destroy() end) end
-        if BodyVelocity then pcall(function() BodyVelocity:Destroy() end) end
-        flyButton.Text = "FLY: OFF"
-        flyButton.BackgroundColor3 = Color3.fromRGB(80, 80, 80)
+        if BodyGyro then BodyGyro:Destroy() end
+        if BodyVelocity then BodyVelocity:Destroy() end
+        SafeSetText(GuiElements.flyButton, "FLY: OFF")
+        GuiElements.flyButton.BackgroundColor3 = Color3.fromRGB(80, 80, 80)
+        
+        -- Hide mobile controls if on mobile
+        if IsMobile and GuiElements.mobileControls then
+            GuiElements.mobileControls.Visible = false
+        end
     end
-end, 0.4)
+end, 0.4, 0.5)
+
+-- Platform Walk Button
+GuiElements.platformButton = CreateButton("PLATFORM: OFF", 0.3, function()
+    PlatformWalk = not PlatformWalk
+    if PlatformWalk then
+        SafeSetText(GuiElements.platformButton, "PLATFORM: ON")
+        GuiElements.platformButton.BackgroundColor3 = Color3.fromRGB(0, 150, 0)
+    else
+        SafeSetText(GuiElements.platformButton, "PLATFORM: OFF")
+        GuiElements.platformButton.BackgroundColor3 = Color3.fromRGB(80, 80, 80)
+        
+        -- Remove platform when turning off
+        if LastPlatform and LastPlatform.Parent then
+            LastPlatform:Destroy()
+            LastPlatform = nil
+        end
+    end
+end, 0.4, 0.05)
+
+-- NoClip Button
+GuiElements.noclipButton = CreateButton("NOCLIP: OFF", 0.3, function()
+    local noclipEnabled = not Workspace.CurrentCamera:FindFirstChild("Noclip")
+    
+    if noclipEnabled then
+        local noclipPart = Instance.new("Part")
+        noclipPart.Name = "Noclip"
+        noclipPart.Size = Vector3.new(2, 2, 2)
+        noclipPart.Transparency = 1
+        noclipPart.CanCollide = false
+        noclipPart.Anchored = true
+        noclipPart.Parent = Workspace.CurrentCamera
+        
+        SafeSetText(GuiElements.noclipButton, "NOCLIP: ON")
+        GuiElements.noclipButton.BackgroundColor3 = Color3.fromRGB(0, 150, 0)
+    else
+        local noclipPart = Workspace.CurrentCamera:FindFirstChild("Noclip")
+        if noclipPart then
+            noclipPart:Destroy()
+        end
+        
+        SafeSetText(GuiElements.noclipButton, "NOCLIP: OFF")
+        GuiElements.noclipButton.BackgroundColor3 = Color3.fromRGB(80, 80, 80)
+    end
+end, 0.4, 0.5)
 
 -- Speed Control Button
-local speedButton = CreateButton("SPEED: " .. FlySpeed, 0.05, function()
+GuiElements.speedButton = CreateButton("SPEED: " .. FlySpeed, 0.55, function()
     FlySpeed = FlySpeed + 5
     if FlySpeed > 50 then
         FlySpeed = 10
     end
-    speedButton.Text = "SPEED: " .. FlySpeed
-end, 0.4, 0.5)
+    SafeSetText(GuiElements.speedButton, "SPEED: " .. FlySpeed)
+end, 0.8, 0.05)
 
--- Create mobile flight controls
+-- Mobile flight controls
 if IsMobile then
     local touchGui = Instance.new("ScreenGui")
     touchGui.Name = "MobileFlightControls"
     touchGui.Parent = game:GetService("CoreGui")
     
-    -- Up button
-    local upButton = Instance.new("TextButton")
-    upButton.Size = UDim2.new(0.1, 0, 0.1, 0)
-    upButton.Position = UDim2.new(0.8, 0, 0.7, 0)
-    upButton.Text = "↑"
-    upButton.TextSize = 20
-    upButton.BackgroundColor3 = Color3.fromRGB(80, 80, 80)
-    upButton.BorderSizePixel = 2
-    upButton.BorderColor3 = Color3.fromRGB(255, 255, 255)
-    upButton.Parent = touchGui
+    -- Mobile controls frame (initially hidden)
+    local controlsFrame = Instance.new("Frame")
+    controlsFrame.Size = UDim2.new(0.3, 0, 0.4, 0)
+    controlsFrame.Position = UDim2.new(0.68, 0, 0.5, 0)
+    controlsFrame.BackgroundTransparency = 1
+    controlsFrame.Visible = false
+    controlsFrame.Parent = touchGui
+    GuiElements.mobileControls = controlsFrame
     
-    -- Down button
-    local downButton = Instance.new("TextButton")
-    downButton.Size = UDim2.new(0.1, 0, 0.1, 0)
-    downButton.Position = UDim2.new(0.8, 0, 0.85, 0)
-    downButton.Text = "↓"
-    downButton.TextSize = 20
-    downButton.BackgroundColor3 = Color3.fromRGB(80, 80, 80)
-    downButton.BorderSizePixel = 2
-    downButton.BorderColor3 = Color3.fromRGB(255, 255, 255)
-    downButton.Parent = touchGui
+    -- Control buttons with transparent background
+    local controlButtons = {
+        up = {text = "↑", position = UDim2.new(0.35, 0, 0, 0), key = Enum.KeyCode.W},
+        down = {text = "↓", position = UDim2.new(0.35, 0, 0.7, 0), key = Enum.KeyCode.S},
+        left = {text = "←", position = UDim2.new(0, 0, 0.35, 0), key = Enum.KeyCode.A},
+        right = {text = "→", position = UDim2.new(0.7, 0, 0.35, 0), key = Enum.KeyCode.D},
+        forward = {text = "F", position = UDim2.new(0.7, 0, 0, 0), key = Enum.KeyCode.E},
+        backward = {text = "B", position = UDim2.new(0, 0, 0, 0), key = Enum.KeyCode.Q}
+    }
     
-    -- Button events
-    upButton.MouseButton1Down:Connect(function() mobileUp = true end)
-    upButton.MouseButton1Up:Connect(function() mobileUp = false end)
+    -- Mobile control state
+    local mobileControlsState = {}
     
-    downButton.MouseButton1Down:Connect(function() mobileDown = true end)
-    downButton.MouseButton1Up:Connect(function() mobileDown = false end)
+    -- Create control buttons
+    for name, info in pairs(controlButtons) do
+        local button = Instance.new("TextButton")
+        button.Size = UDim2.new(0.25, 0, 0.25, 0)
+        button.Position = info.position
+        button.Text = info.text
+        button.TextSize = 20
+        button.BackgroundColor3 = Color3.fromRGB(80, 80, 80)
+        button.BackgroundTransparency = 0.5
+        button.BorderSizePixel = 0
+        button.TextColor3 = Color3.fromRGB(255, 255, 255)
+        button.Parent = controlsFrame
+        
+        -- Button events
+        button.MouseButton1Down:Connect(function()
+            mobileControlsState[info.key] = true
+        end)
+        
+        button.MouseButton1Up:Connect(function()
+            mobileControlsState[info.key] = false
+        end)
+        
+        button.MouseLeave:Connect(function()
+            mobileControlsState[info.key] = false
+        end)
+    end
+    
+    -- Mobile flight control logic
+    RunService.Heartbeat:Connect(function()
+        if FlyToggled and BodyVelocity then
+            local moveDirection = Vector3.new(0, 0, 0)
+            local camera = Workspace.CurrentCamera
+            
+            if mobileControlsState[Enum.KeyCode.W] then
+                moveDirection = moveDirection + (camera.CFrame.LookVector * FlySpeed)
+            end
+            if mobileControlsState[Enum.KeyCode.S] then
+                moveDirection = moveDirection - (camera.CFrame.LookVector * FlySpeed)
+            end
+            if mobileControlsState[Enum.KeyCode.A] then
+                moveDirection = moveDirection - (camera.CFrame.RightVector * FlySpeed)
+            end
+            if mobileControlsState[Enum.KeyCode.D] then
+                moveDirection = moveDirection + (camera.CFrame.RightVector * FlySpeed)
+            end
+            if mobileControlsState[Enum.KeyCode.E] then
+                moveDirection = moveDirection + Vector3.new(0, FlySpeed, 0)
+            end
+            if mobileControlsState[Enum.KeyCode.Q] then
+                moveDirection = moveDirection - Vector3.new(0, FlySpeed, 0)
+            end
+            
+            BodyVelocity.Velocity = moveDirection
+        end
+    end)
 end
 
--- Flight control function
-local function HandleFlight()
-    pcall(function()
-        -- Handle flight
-        if FlyToggled and RootPart and RootPart.Parent then
-            -- Ensure physics objects exist
-            if not BodyGyro or not BodyVelocity or not BodyGyro.Parent or not BodyVelocity.Parent then
-                if BodyGyro then pcall(function() BodyGyro:Destroy() end) end
-                if BodyVelocity then pcall(function() BodyVelocity:Destroy() end) end
-                
+-- Anti-Kick and Anti-Death Protection
+local function SetupAntiCheatProtection()
+    -- Prevent character from dying
+    if Humanoid then
+        Humanoid.HealthChanged:Connect(function()
+            if AntiAntiCheat.Enabled and Humanoid.Health < 10 then
+                Humanoid.Health = 100
+            end
+        end)
+    end
+    
+    -- Prevent unexpected position changes (jail teleport)
+    if RootPart then
+        RootPart:GetPropertyChangedSignal("Position"):Connect(function()
+            if AntiAntiCheat.Enabled then
+                local distance = (RootPart.Position - AntiAntiCheat.LastPosition).Magnitude
+                if distance > 100 then
+                    delay(0.5, function()
+                        if RootPart and RootPart.Parent then
+                            RootPart.CFrame = CFrame.new(AntiAntiCheat.LastPosition)
+                        end
+                    end)
+                end
+                AntiAntiCheat.LastPosition = RootPart.Position
+            end
+        end)
+    end
+    
+    -- Reconnect if kicked
+    Players.PlayerRemoving:Connect(function(leavingPlayer)
+        if AntiAntiCheat.Enabled and leavingPlayer == player then
+            wait(3)
+            game:GetService("TeleportService"):TeleportToPlaceInstance(game.PlaceId, game.JobId, player)
+        end
+    end)
+end
+
+-- Initialize anti-cheat protection
+SetupAntiCheatProtection()
+
+-- Flight control and platform system
+RunService.Heartbeat:Connect(function(deltaTime)
+    -- Update anti-cheat protection
+    if AntiAntiCheat.Enabled then
+        AntiAntiCheat.LastHealth = Humanoid.Health
+        AntiAntiCheat.LastPosition = RootPart.Position
+    end
+    
+    -- Handle flight
+    if FlyToggled then
+        -- Ensure physics objects exist
+        if not BodyGyro or not BodyVelocity or not BodyGyro.Parent or not BodyVelocity.Parent then
+            if RootPart and RootPart.Parent then
                 BodyGyro = Instance.new("BodyGyro")
                 BodyGyro.P = 10000
                 BodyGyro.MaxTorque = Vector3.new(9e9, 9e9, 9e9)
@@ -149,68 +351,113 @@ local function HandleFlight()
                 BodyVelocity.MaxForce = Vector3.new(9e9, 9e9, 9e9)
                 BodyVelocity.Parent = RootPart
             end
-            
-            -- Flight controls
-            if BodyGyro and BodyVelocity then
-                local camera = Workspace.CurrentCamera
-                if camera then
-                    BodyGyro.CFrame = camera.CFrame
-                    
-                    local moveDirection = Vector3.new(0, 0, 0)
-                    
-                    -- Keyboard controls
-                    if UserInputService:IsKeyDown(Enum.KeyCode.W) then
-                        moveDirection = moveDirection + (camera.CFrame.LookVector * FlySpeed)
-                    end
-                    
-                    if UserInputService:IsKeyDown(Enum.KeyCode.S) then
-                        moveDirection = moveDirection - (camera.CFrame.LookVector * FlySpeed)
-                    end
-                    
-                    if UserInputService:IsKeyDown(Enum.KeyCode.D) then
-                        moveDirection = moveDirection + (camera.CFrame.RightVector * FlySpeed)
-                    end
-                    
-                    if UserInputService:IsKeyDown(Enum.KeyCode.A) then
-                        moveDirection = moveDirection - (camera.CFrame.RightVector * FlySpeed)
-                    end
-                    
-                    -- Vertical controls
-                    if UserInputService:IsKeyDown(Enum.KeyCode.Space) or mobileUp then
-                        moveDirection = moveDirection + Vector3.new(0, FlySpeed, 0)
-                    end
-                    
-                    if UserInputService:IsKeyDown(Enum.KeyCode.LeftShift) or mobileDown then
-                        moveDirection = moveDirection - Vector3.new(0, FlySpeed, 0)
-                    end
-                    
-                    BodyVelocity.Velocity = moveDirection
+        end
+        
+        -- Flight controls for non-mobile
+        if not IsMobile and BodyGyro and BodyVelocity and RootPart and RootPart.Parent then
+            local camera = Workspace.CurrentCamera
+            if camera then
+                BodyGyro.CFrame = camera.CFrame
+                
+                local moveDirection = Vector3.new(0, 0, 0)
+                
+                if UserInputService:IsKeyDown(Enum.KeyCode.W) then
+                    moveDirection = moveDirection + (camera.CFrame.LookVector * FlySpeed)
                 end
+                if UserInputService:IsKeyDown(Enum.KeyCode.S) then
+                    moveDirection = moveDirection - (camera.CFrame.LookVector * FlySpeed)
+                end
+                if UserInputService:IsKeyDown(Enum.KeyCode.D) then
+                    moveDirection = moveDirection + (camera.CFrame.RightVector * FlySpeed)
+                end
+                if UserInputService:IsKeyDown(Enum.KeyCode.A) then
+                    moveDirection = moveDirection - (camera.CFrame.RightVector * FlySpeed)
+                end
+                if UserInputService:IsKeyDown(Enum.KeyCode.E) then
+                    moveDirection = moveDirection + Vector3.new(0, FlySpeed, 0)
+                end
+                if UserInputService:IsKeyDown(Enum.KeyCode.Q) then
+                    moveDirection = moveDirection - Vector3.new(0, FlySpeed, 0)
+                end
+                
+                BodyVelocity.Velocity = moveDirection
             end
         end
-    end)
-end
+    end
+    
+    -- Platform walk system - faster spawning
+    if PlatformWalk and not FlyToggled and Humanoid and Humanoid.FloorMaterial == Enum.Material.Air then
+        local currentTime = tick()
+        if currentTime - lastPlatformTime >= PlatformCooldown then
+            lastPlatformTime = currentTime
+            
+            -- Remove old platform if it exists
+            if LastPlatform and LastPlatform.Parent then
+                LastPlatform:Destroy()
+            end
+            
+            -- Create a new platform below the player
+            local platform = Instance.new("Part")
+            platform.Size = Vector3.new(8, 1, 8)  -- Larger platform
+            platform.Position = RootPart.Position - Vector3.new(0, 3.5, 0)  -- Closer to player
+            platform.Anchored = true
+            platform.CanCollide = true
+            platform.Transparency = 0.4
+            platform.BrickColor = BrickColor.new("Bright blue")
+            platform.Material = Enum.Material.Neon
+            platform.Name = "PlayerPlatform"
+            platform.Parent = Workspace
+            
+            LastPlatform = platform
+            
+            -- Remove platform after a short time
+            delay(1.2, function()
+                if platform and platform.Parent then
+                    platform:Destroy()
+                end
+            end)
+        end
+    elseif LastPlatform and LastPlatform.Parent then
+        -- Remove platform when we're back on ground
+        LastPlatform:Destroy()
+        LastPlatform = nil
+    end
+    
+    -- NoClip functionality
+    local noclipPart = Workspace.CurrentCamera:FindFirstChild("Noclip")
+    if noclipPart and Character then
+        for _, part in pairs(Character:GetDescendants()) do
+            if part:IsA("BasePart") then
+                part.CanCollide = false
+            end
+        end
+    end
+end)
 
 -- Character respawn handling
 player.CharacterAdded:Connect(function(newCharacter)
-    pcall(function()
-        Character = newCharacter
-        Humanoid = newCharacter:WaitForChild("Humanoid")
-        RootPart = newCharacter:WaitForChild("HumanoidRootPart")
-        
-        -- Re-enable flight if it was active
-        if FlyToggled then
-            FlyToggled = false
-            flyButton.Text = "FLY: OFF"
-            flyButton.BackgroundColor3 = Color3.fromRGB(80, 80, 80)
-            
-            if BodyGyro then pcall(function() BodyGyro:Destroy() end) end
-            if BodyVelocity then pcall(function() BodyVelocity:Destroy() end) end
-        end
-    end)
+    Character = newCharacter
+    Humanoid = newCharacter:WaitForChild("Humanoid")
+    RootPart = newCharacter:WaitForChild("HumanoidRootPart")
+    
+    -- Re-enable flight if it was active
+    if FlyToggled then
+        FlyToggled = false
+        delay(0.5, function()
+            FlyToggled = true
+            if BodyGyro then BodyGyro:Destroy() end
+            if BodyVelocity then BodyVelocity:Destroy() end
+        end)
+    end
 end)
 
--- Connect flight handler to heartbeat
-RunService.Heartbeat:Connect(HandleFlight)
+print("✅ Mobile Fly & Platform with Anti-Cheat loaded successfully!")
+print("📱 Mobile controls: " .. tostring(IsMobile))
+print("🛡️ Anti-Cheat protection: " .. tostring(AntiAntiCheat.Enabled))
 
-print("✅ Simple Fly System loaded successfully!")
+-- Instructions
+warn("=== INSTRUCTIONS ===")
+warn("FLY: W/A/S/D for movement, E/Q for up/down")
+warn("PLATFORM: Creates platforms when walking in air")
+warn("NOCLIP: Walk through walls")
+warn("ANTI-CHEAT: Prevents kicks and deaths")
