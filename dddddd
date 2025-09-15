@@ -131,21 +131,11 @@ GuiElements.flyButton = CreateButton("FLY: OFF", 0.05, function()
         
         SafeSetText(GuiElements.flyButton, "FLY: ON")
         GuiElements.flyButton.BackgroundColor3 = Color3.fromRGB(0, 150, 0)
-        
-        -- Show mobile controls if on mobile
-        if IsMobile and GuiElements.mobileControls then
-            GuiElements.mobileControls.Visible = true
-        end
     else
         if BodyGyro then BodyGyro:Destroy() end
         if BodyVelocity then BodyVelocity:Destroy() end
         SafeSetText(GuiElements.flyButton, "FLY: OFF")
         GuiElements.flyButton.BackgroundColor3 = Color3.fromRGB(80, 80, 80)
-        
-        -- Hide mobile controls if on mobile
-        if IsMobile and GuiElements.mobileControls then
-            GuiElements.mobileControls.Visible = false
-        end
     end
 end, 0.4, 0.5)
 
@@ -202,89 +192,98 @@ GuiElements.speedButton = CreateButton("SPEED: " .. FlySpeed, 0.55, function()
     SafeSetText(GuiElements.speedButton, "SPEED: " .. FlySpeed)
 end, 0.8, 0.05)
 
--- Mobile flight controls
+-- Create mobile flight controls if on mobile
+local mobileUp = false
+local mobileDown = false
+local mobileForward = false
+local mobileBackward = false
+local mobileLeft = false
+local mobileRight = false
+
 if IsMobile then
     local touchGui = Instance.new("ScreenGui")
     touchGui.Name = "MobileFlightControls"
     touchGui.Parent = game:GetService("CoreGui")
     
-    -- Mobile controls frame (initially hidden)
-    local controlsFrame = Instance.new("Frame")
-    controlsFrame.Size = UDim2.new(0.3, 0, 0.4, 0)
-    controlsFrame.Position = UDim2.new(0.68, 0, 0.5, 0)
-    controlsFrame.BackgroundTransparency = 1
-    controlsFrame.Visible = false
-    controlsFrame.Parent = touchGui
-    GuiElements.mobileControls = controlsFrame
+    -- Up button
+    local upButton = Instance.new("TextButton")
+    upButton.Size = UDim2.new(0.12, 0, 0.12, 0)
+    upButton.Position = UDim2.new(0.8, 0, 0.7, 0)
+    upButton.Text = "↑"
+    upButton.TextSize = 24
+    upButton.BackgroundColor3 = Color3.fromRGB(80, 80, 80)
+    upButton.BorderSizePixel = 2
+    upButton.BorderColor3 = Color3.fromRGB(255, 255, 255)
+    upButton.Parent = touchGui
     
-    -- Control buttons with transparent background
-    local controlButtons = {
-        up = {text = "↑", position = UDim2.new(0.35, 0, 0, 0), key = Enum.KeyCode.W},
-        down = {text = "↓", position = UDim2.new(0.35, 0, 0.7, 0), key = Enum.KeyCode.S},
-        left = {text = "←", position = UDim2.new(0, 0, 0.35, 0), key = Enum.KeyCode.A},
-        right = {text = "→", position = UDim2.new(0.7, 0, 0.35, 0), key = Enum.KeyCode.D},
-        forward = {text = "F", position = UDim2.new(0.7, 0, 0, 0), key = Enum.KeyCode.E},
-        backward = {text = "B", position = UDim2.new(0, 0, 0, 0), key = Enum.KeyCode.Q}
-    }
+    -- Down button
+    local downButton = Instance.new("TextButton")
+    downButton.Size = UDim2.new(0.12, 0, 0.12, 0)
+    downButton.Position = UDim2.new(0.8, 0, 0.85, 0)
+    downButton.Text = "↓"
+    downButton.TextSize = 24
+    downButton.BackgroundColor3 = Color3.fromRGB(80, 80, 80)
+    downButton.BorderSizePixel = 2
+    downButton.BorderColor3 = Color3.fromRGB(255, 255, 255)
+    downButton.Parent = touchGui
     
-    -- Mobile control state
-    local mobileControlsState = {}
+    -- Forward button
+    local forwardButton = Instance.new("TextButton")
+    forwardButton.Size = UDim2.new(0.12, 0, 0.12, 0)
+    forwardButton.Position = UDim2.new(0.65, 0, 0.7, 0)
+    forwardButton.Text = "→"
+    forwardButton.TextSize = 24
+    forwardButton.BackgroundColor3 = Color3.fromRGB(80, 80, 80)
+    forwardButton.BorderSizePixel = 2
+    forwardButton.BorderColor3 = Color3.fromRGB(255, 255, 255)
+    forwardButton.Parent = touchGui
     
-    -- Create control buttons
-    for name, info in pairs(controlButtons) do
-        local button = Instance.new("TextButton")
-        button.Size = UDim2.new(0.25, 0, 0.25, 0)
-        button.Position = info.position
-        button.Text = info.text
-        button.TextSize = 20
-        button.BackgroundColor3 = Color3.fromRGB(80, 80, 80)
-        button.BackgroundTransparency = 0.5
-        button.BorderSizePixel = 0
-        button.TextColor3 = Color3.fromRGB(255, 255, 255)
-        button.Parent = controlsFrame
-        
-        -- Button events
-        button.MouseButton1Down:Connect(function()
-            mobileControlsState[info.key] = true
-        end)
-        
-        button.MouseButton1Up:Connect(function()
-            mobileControlsState[info.key] = false
-        end)
-        
-        button.MouseLeave:Connect(function()
-            mobileControlsState[info.key] = false
-        end)
-    end
+    -- Backward button
+    local backwardButton = Instance.new("TextButton")
+    backwardButton.Size = UDim2.new(0.12, 0, 0.12, 0)
+    backwardButton.Position = UDim2.new(0.5, 0, 0.7, 0)
+    backwardButton.Text = "←"
+    backwardButton.TextSize = 24
+    backwardButton.BackgroundColor3 = Color3.fromRGB(80, 80, 80)
+    backwardButton.BorderSizePixel = 2
+    backwardButton.BorderColor3 = Color3.fromRGB(255, 255, 255)
+    backwardButton.Parent = touchGui
     
-    -- Mobile flight control logic
-    RunService.Heartbeat:Connect(function()
-        if FlyToggled and BodyVelocity then
-            local moveDirection = Vector3.new(0, 0, 0)
-            local camera = Workspace.CurrentCamera
-            
-            if mobileControlsState[Enum.KeyCode.W] then
-                moveDirection = moveDirection + (camera.CFrame.LookVector * FlySpeed)
-            end
-            if mobileControlsState[Enum.KeyCode.S] then
-                moveDirection = moveDirection - (camera.CFrame.LookVector * FlySpeed)
-            end
-            if mobileControlsState[Enum.KeyCode.A] then
-                moveDirection = moveDirection - (camera.CFrame.RightVector * FlySpeed)
-            end
-            if mobileControlsState[Enum.KeyCode.D] then
-                moveDirection = moveDirection + (camera.CFrame.RightVector * FlySpeed)
-            end
-            if mobileControlsState[Enum.KeyCode.E] then
-                moveDirection = moveDirection + Vector3.new(0, FlySpeed, 0)
-            end
-            if mobileControlsState[Enum.KeyCode.Q] then
-                moveDirection = moveDirection - Vector3.new(0, FlySpeed, 0)
-            end
-            
-            BodyVelocity.Velocity = moveDirection
-        end
-    end)
+    -- Left button
+    local leftButton = Instance.new("TextButton")
+    leftButton.Size = UDim2.new(0.12, 0, 0.12, 0)
+    leftButton.Position = UDim2.new(0.65, 0, 0.55, 0)
+    leftButton.Text = "↶"
+    leftButton.TextSize = 24
+    leftButton.BackgroundColor3 = Color3.fromRGB(80, 80, 80)
+    leftButton.BorderSizePixel = 2
+    leftButton.BorderColor3 = Color3.fromRGB(255, 255, 255)
+    leftButton.Parent = touchGui
+    
+    -- Right button
+    local rightButton = Instance.new("TextButton")
+    rightButton.Size = UDim2.new(0.12, 0, 0.12, 0)
+    rightButton.Position = UDim2.new(0.65, 0, 0.85, 0)
+    rightButton.Text = "↷"
+    rightButton.TextSize = 24
+    rightButton.BackgroundColor3 = Color3.fromRGB(80, 80, 80)
+    rightButton.BorderSizePixel = 2
+    rightButton.BorderColor3 = Color3.fromRGB(255, 255, 255)
+    rightButton.Parent = touchGui
+    
+    -- Mobile control variables
+    upButton.MouseButton1Down:Connect(function() mobileUp = true end)
+    upButton.MouseButton1Up:Connect(function() mobileUp = false end)
+    downButton.MouseButton1Down:Connect(function() mobileDown = true end)
+    downButton.MouseButton1Up:Connect(function() mobileDown = false end)
+    forwardButton.MouseButton1Down:Connect(function() mobileForward = true end)
+    forwardButton.MouseButton1Up:Connect(function() mobileForward = false end)
+    backwardButton.MouseButton1Down:Connect(function() mobileBackward = true end)
+    backwardButton.MouseButton1Up:Connect(function() mobileBackward = false end)
+    leftButton.MouseButton1Down:Connect(function() mobileLeft = true end)
+    leftButton.MouseButton1Up:Connect(function() mobileLeft = false end)
+    rightButton.MouseButton1Down:Connect(function() mobileRight = true end)
+    rightButton.MouseButton1Up:Connect(function() mobileRight = false end)
 end
 
 -- Anti-Kick and Anti-Death Protection
@@ -353,31 +352,48 @@ RunService.Heartbeat:Connect(function(deltaTime)
             end
         end
         
-        -- Flight controls for non-mobile
-        if not IsMobile and BodyGyro and BodyVelocity and RootPart and RootPart.Parent then
+        -- Flight controls
+        if BodyGyro and BodyVelocity and RootPart and RootPart.Parent then
             local camera = Workspace.CurrentCamera
             if camera then
                 BodyGyro.CFrame = camera.CFrame
                 
                 local moveDirection = Vector3.new(0, 0, 0)
                 
-                if UserInputService:IsKeyDown(Enum.KeyCode.W) then
+                -- Keyboard controls (WASD and Arrow Keys)
+                if UserInputService:IsKeyDown(Enum.KeyCode.W) or UserInputService:IsKeyDown(Enum.KeyCode.Up) then
                     moveDirection = moveDirection + (camera.CFrame.LookVector * FlySpeed)
                 end
-                if UserInputService:IsKeyDown(Enum.KeyCode.S) then
+                if UserInputService:IsKeyDown(Enum.KeyCode.S) or UserInputService:IsKeyDown(Enum.KeyCode.Down) then
                     moveDirection = moveDirection - (camera.CFrame.LookVector * FlySpeed)
                 end
-                if UserInputService:IsKeyDown(Enum.KeyCode.D) then
+                if UserInputService:IsKeyDown(Enum.KeyCode.D) or UserInputService:IsKeyDown(Enum.KeyCode.Right) then
                     moveDirection = moveDirection + (camera.CFrame.RightVector * FlySpeed)
                 end
-                if UserInputService:IsKeyDown(Enum.KeyCode.A) then
+                if UserInputService:IsKeyDown(Enum.KeyCode.A) or UserInputService:IsKeyDown(Enum.KeyCode.Left) then
                     moveDirection = moveDirection - (camera.CFrame.RightVector * FlySpeed)
                 end
-                if UserInputService:IsKeyDown(Enum.KeyCode.E) then
-                    moveDirection = moveDirection + Vector3.new(0, FlySpeed, 0)
-                end
-                if UserInputService:IsKeyDown(Enum.KeyCode.Q) then
-                    moveDirection = moveDirection - Vector3.new(0, FlySpeed, 0)
+                
+                -- Mobile controls
+                if IsMobile then
+                    if mobileForward then
+                        moveDirection = moveDirection + (camera.CFrame.LookVector * FlySpeed)
+                    end
+                    if mobileBackward then
+                        moveDirection = moveDirection - (camera.CFrame.LookVector * FlySpeed)
+                    end
+                    if mobileRight then
+                        moveDirection = moveDirection + (camera.CFrame.RightVector * FlySpeed)
+                    end
+                    if mobileLeft then
+                        moveDirection = moveDirection - (camera.CFrame.RightVector * FlySpeed)
+                    end
+                    if mobileUp then
+                        moveDirection = moveDirection + Vector3.new(0, FlySpeed, 0)
+                    end
+                    if mobileDown then
+                        moveDirection = moveDirection - Vector3.new(0, FlySpeed, 0)
+                    end
                 end
                 
                 BodyVelocity.Velocity = moveDirection
@@ -457,7 +473,7 @@ print("🛡️ Anti-Cheat protection: " .. tostring(AntiAntiCheat.Enabled))
 
 -- Instructions
 warn("=== INSTRUCTIONS ===")
-warn("FLY: W/A/S/D for movement, E/Q for up/down")
+warn("FLY: W/A/S/D or Arrow Keys for movement")
 warn("PLATFORM: Creates platforms when walking in air")
 warn("NOCLIP: Walk through walls")
 warn("ANTI-CHEAT: Prevents kicks and deaths")
